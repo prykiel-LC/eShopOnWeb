@@ -89,7 +89,8 @@ jobs:
           --resource-group ${{ env.RESOURCE-GROUP }} \
           --template-file bicep-template/webapp.bicep \
           --parameters webAppName=${{ env.WEBAPP-NAME }} location=${{ env.LOCATION }} \
-          --verbose 
+          --only-show-errors \
+          --no-prompt
     # Delay
     - name: Wait before deploy
       run: sleep 60
