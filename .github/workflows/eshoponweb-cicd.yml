@@ -9,7 +9,7 @@ env:
   LOCATION: eastus
   TEMPLATE-FILE: infra/webapp.bicep
   SUBSCRIPTION-ID: e4d728fa-3b7f-46c9-b51c-ff25ddec673f
-  WEBAPP-NAME: eshoponweb-webapp-new
+  WEBAPP-NAME: eshoponweb-webapp-1
   ACTIONS_RUNNER_DEBUG: true
   ACTIONS_STEP_DEBUG: true
 
