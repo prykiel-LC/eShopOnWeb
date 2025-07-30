@@ -80,17 +80,26 @@ jobs:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
            
     # Deploy Azure WebApp using Bicep file
-    - name: Deploy infrastructure using Bicep via CLI
-      uses: azure/cli@v2
-      with:
-        inlineScript: |
+    - name: Run Azure CLI with older version (2.53.1)
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          -e AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }} \
+          -e AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }} \
+          -e AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }} \
+          mcr.microsoft.com/azure-cli:2.53.1 \
+          az login --service-principal \
+               --username $AZURE_CLIENT_ID \
+               --password $AZURE_CLIENT_SECRET \
+               --tenant $AZURE_TENANT_ID && \
           az deployment group create \
-          --subscription ${{ env.SUBSCRIPTION-ID }} \
-          --resource-group ${{ env.RESOURCE-GROUP }} \
-          --template-file bicep-template/webapp.bicep \
-          --parameters webAppName=${{ env.WEBAPP-NAME }} location=${{ env.LOCATION }} \
-          --only-show-errors \
-          --no-prompt
+            --subscription ${{ env.SUBSCRIPTION-ID }} \
+            --resource-group ${{ env.RESOURCE-GROUP }} \
+            --template-file bicep-template/webapp.bicep \
+            --parameters webAppName=${{ env.WEBAPP-NAME }} location=${{ env.LOCATION }} \
+            --only-show-errors \
+            --no-prompt
     # Delay
     - name: Wait before deploy
       run: sleep 60
