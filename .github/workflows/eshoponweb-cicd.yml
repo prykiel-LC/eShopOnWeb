@@ -80,14 +80,16 @@ jobs:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
            
     # Deploy Azure WebApp using Bicep file
-    - name: deploy
-      uses: azure/arm-deploy@v2
+    - name: Deploy infrastructure using Bicep via CLI
+      uses: azure/cli@v2
       with:
-        subscriptionId: ${{ env.SUBSCRIPTION-ID }}
-        resourceGroupName: ${{ env.RESOURCE-GROUP }}
-        template: bicep-template/webapp.bicep
-        parameters: 'webAppName=${{ env.WEBAPP-NAME }} location=${{ env.LOCATION }}'
-        failOnStdErr: false   
+        inlineScript: |
+          az deployment group create \
+          --subscription ${{ env.SUBSCRIPTION-ID }} \
+          --resource-group ${{ env.RESOURCE-GROUP }} \
+          --template-file bicep-template/webapp.bicep \
+          --parameters webAppName=${{ env.WEBAPP-NAME }} location=${{ env.LOCATION }} \
+          --verbose 
     # Delay
     - name: Wait before deploy
       run: sleep 60
