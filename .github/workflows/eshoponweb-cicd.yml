@@ -74,48 +74,57 @@ jobs:
         path: bicep-template
         
    #Login in your azure subscription using a service principal (credentials stored as GitHub Secret in repo)
-    - name: Azure Login
-      uses: azure/login@v2
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+   # - name: Azure Login
+   #   uses: azure/login@v2
+   #   with:
+   #     creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Extract Azure service principal credentials
+      run: |
+          echo "${{ secrets.AZURE_CREDENTIALS }}" > creds.json
+          echo "AZURE_CLIENT_ID=$(jq -r .clientId creds.json)" >> $GITHUB_ENV
+          echo "AZURE_CLIENT_SECRET=$(jq -r .clientSecret creds.json)" >> $GITHUB_ENV
+          echo "AZURE_TENANT_ID=$(jq -r .tenantId creds.json)" >> $GITHUB_ENV
+      shell: bash
            
     # Deploy Azure WebApp using Bicep file
     - name: Run Azure CLI with older version (2.53.1)
       run: |
-        docker run --rm \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace \
-          -e AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }} \
-          -e AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }} \
-          -e AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }} \
-          mcr.microsoft.com/azure-cli:2.53.1 \
-          az login --service-principal \
-               --username $AZURE_CLIENT_ID \
-               --password $AZURE_CLIENT_SECRET \
-               --tenant $AZURE_TENANT_ID && \
-          az deployment group create \
-            --subscription ${{ env.SUBSCRIPTION-ID }} \
-            --resource-group ${{ env.RESOURCE-GROUP }} \
-            --template-file bicep-template/webapp.bicep \
-            --parameters webAppName=${{ env.WEBAPP-NAME }} location=${{ env.LOCATION }} \
-            --only-show-errors \
-            --no-prompt
-    # Delay
-    - name: Wait before deploy
-      run: sleep 60
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            -e AZURE_CLIENT_ID=$AZURE_CLIENT_ID \
+            -e AZURE_CLIENT_SECRET=$AZURE_CLIENT_SECRET \
+            -e AZURE_TENANT_ID=$AZURE_TENANT_ID \
+            mcr.microsoft.com/azure-cli:2.53.1 \
+            /bin/bash -c "
+              az login --service-principal \
+                --username \$AZURE_CLIENT_ID \
+                --password \$AZURE_CLIENT_SECRET \
+                --tenant \$AZURE_TENANT_ID &&
+              az deployment group create \
+                --subscription ${{ env.SUBSCRIPTION-ID }} \
+                --resource-group ${{ env.RESOURCE-GROUP }} \
+                --template-file bicep-template/webapp.bicep \
+                --parameters webAppName=${{ env.WEBAPP-NAME }} location=${{ env.LOCATION }} \
+                --only-show-errors \
+                --no-prompt"
+      env:
+          SUBSCRIPTION-ID: ${{ env.SUBSCRIPTION-ID }}
+          RESOURCE-GROUP: ${{ env.RESOURCE-GROUP }}
+          WEBAPP-NAME: ${{ env.WEBAPP-NAME }}
+          LOCATION: ${{ env.LOCATION }}
+     
       
     # Publish website to Azure App Service (WebApp)
-    # Step disabled due to issue where the site sometimes can't be found: https://github.com/microsoft/pipelines-appservice-lib/issues/56. Instead deploy using CLI
-    - name: Publish Website to WebApp
-      uses: Azure/webapps-deploy@v3
-      with:
-        type: ZIP
-        app-name: ${{ env.WEBAPP-NAME  }}
-        package: .net-app/app.zip
-
-    # Publish website to Azure App Service using CLI (WebApp)
-    - name: Publish Website to WebApp
-      uses: Azure/cli@v2
-      with:
-        inlineScript: |
-             az webapp deploy --name ${{ env.WEBAPP-NAME }} --resource-group ${{ env.RESOURCE-GROUP }} --src-path .net-app/app.zip --type zip
+    - name: Publish Website to WebApp using Azure CLI
+      run: |
+          az login --service-principal \
+            --username $AZURE_CLIENT_ID \
+            --password $AZURE_CLIENT_SECRET \
+            --tenant $AZURE_TENANT_ID &&
+          az webapp deploy \
+            --name ${{ env.WEBAPP-NAME }} \
+            --resource-group ${{ env.RESOURCE-GROUP }} \
+            --src-path .net-app/app.zip \
+            --type zip
