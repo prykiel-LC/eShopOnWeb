@@ -35,13 +35,13 @@ jobs:
           cd ${{env.DOTNET_ROOT}}/myapp
           zip -r ../app.zip .
 
-      - name: Upload artifact for deployment job (app)
+      - name: Upload artifact (app)
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
           path: ${{env.DOTNET_ROOT}}/app.zip
 
-      - name: Upload artifact for deployment job (bicep)
+      - name: Upload artifact (bicep)
         uses: actions/upload-artifact@v4
         with:
           name: bicep-template
@@ -73,7 +73,7 @@ jobs:
           echo "AZURE_CLIENT_SECRET=$(jq -r .clientSecret creds.json)" >> $GITHUB_ENV
           echo "AZURE_TENANT_ID=$(jq -r .tenantId creds.json)" >> $GITHUB_ENV
 
-      - name: Deploy with Azure CLI in Docker (v2.51.0)
+      - name: Deploy using Azure CLI in Docker (v2.51.0)
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
@@ -102,4 +102,5 @@ jobs:
           app-name: ${{ env.WEBAPP-NAME }}
           package: .net-app/app.zip
           type: zip
+
 
