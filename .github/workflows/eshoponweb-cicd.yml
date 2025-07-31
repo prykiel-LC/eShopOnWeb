@@ -65,20 +65,36 @@ jobs:
           name: bicep-template
           path: bicep-template
 
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Deploy infrastructure with Bicep
+      - name: Extract Azure Credentials
+        id: extract-creds
         run: |
-          az deployment group create \
-            --subscription ${{ env.SUBSCRIPTION-ID }} \
-            --resource-group ${{ env.RESOURCE-GROUP }} \
-            --template-file bicep-template/webapp.bicep \
-            --parameters webAppName=${{ env.WEBAPP-NAME }} location=${{ env.LOCATION }} \
-            --only-show-errors \
-            --no-prompt
+          echo '${{ secrets.AZURE_CREDENTIALS }}' > creds.json
+          echo "AZURE_CLIENT_ID=$(jq -r .clientId creds.json)" >> $GITHUB_ENV
+          echo "AZURE_CLIENT_SECRET=$(jq -r .clientSecret creds.json)" >> $GITHUB_ENV
+          echo "AZURE_TENANT_ID=$(jq -r .tenantId creds.json)" >> $GITHUB_ENV
+
+      - name: Deploy with Azure CLI in Docker (v2.51.0)
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            -e AZURE_CLIENT_ID=$AZURE_CLIENT_ID \
+            -e AZURE_CLIENT_SECRET=$AZURE_CLIENT_SECRET \
+            -e AZURE_TENANT_ID=$AZURE_TENANT_ID \
+            mcr.microsoft.com/azure-cli:2.51.0 \
+            /bin/bash -c "
+              az login --service-principal \
+                --username \$AZURE_CLIENT_ID \
+                --password \$AZURE_CLIENT_SECRET \
+                --tenant \$AZURE_TENANT_ID &&
+              az deployment group create \
+                --subscription ${{ env.SUBSCRIPTION-ID }} \
+                --resource-group ${{ env.RESOURCE-GROUP }} \
+                --template-file bicep-template/webapp.bicep \
+                --parameters webAppName=${{ env.WEBAPP-NAME }} location=${{ env.LOCATION }} \
+                --only-show-errors \
+                --no-prompt
+            "
 
       - name: Deploy web app ZIP package
         uses: Azure/webapps-deploy@v3
@@ -86,3 +102,4 @@ jobs:
           app-name: ${{ env.WEBAPP-NAME }}
           package: .net-app/app.zip
           type: zip
+
