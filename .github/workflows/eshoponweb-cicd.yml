@@ -88,7 +88,7 @@ jobs:
       shell: bash
            
     # Deploy Azure WebApp using Bicep file
-    - name: Run Azure CLI with older version (2.53.1)
+    - name: Run Azure CLI using Docker (2.53.1)
       run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
@@ -109,22 +109,13 @@ jobs:
                 --parameters webAppName=${{ env.WEBAPP-NAME }} location=${{ env.LOCATION }} \
                 --only-show-errors \
                 --no-prompt"
-      env:
-          SUBSCRIPTION-ID: ${{ env.SUBSCRIPTION-ID }}
-          RESOURCE-GROUP: ${{ env.RESOURCE-GROUP }}
-          WEBAPP-NAME: ${{ env.WEBAPP-NAME }}
-          LOCATION: ${{ env.LOCATION }}
+     
      
       
     # Publish website to Azure App Service (WebApp)
-    - name: Publish Website to WebApp using Azure CLI
-      run: |
-          az login --service-principal \
-            --username $AZURE_CLIENT_ID \
-            --password $AZURE_CLIENT_SECRET \
-            --tenant $AZURE_TENANT_ID &&
-          az webapp deploy \
-            --name ${{ env.WEBAPP-NAME }} \
-            --resource-group ${{ env.RESOURCE-GROUP }} \
-            --src-path .net-app/app.zip \
-            --type zip
+    - name: Deploy web app ZIP package
+      uses: Azure/webapps-deploy@v3
+      with:
+           app-name: ${{ env.WEBAPP-NAME }}
+           package: .net-app/app.zip
+           type: zip
